@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Smart Blood Bank Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.7.5/dist/web3.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(to right, #8e0e00, #1f1c18);
+            color: white;
+            text-align: center;
+        }
+
+        .card {
+            background: white;
+            color: black;
+            width: 420px;
+            margin: auto;
+            margin-top: 40px;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 0 15px black;
+        }
+
+        input {
+            width: 90%;
+            padding: 8px;
+            margin: 8px;
+        }
+
+        button {
+            padding: 10px 15px;
+            margin: 5px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .primary { background: #c0392b; color: white; }
+        .primary:hover { background: #e74c3c; }
+
+        .info { background: #2980b9; color: white; }
+        .info:hover { background: #3498db; }
+
+        .success { color: green; font-weight: bold; }
+        .danger { color: red; font-weight: bold; }
+
+        #status { margin-top: 15px; font-size: 14px; }
+        #wallet { font-size: 12px; margin-bottom: 10px; }
+    </style>
+</head>
+
+<body>
+
+<h2>🩸 Smart Blood Bank Monitoring</h2>
+
+<div class="card">
+
+<p id="wallet">Wallet: Not Connected</p>
+
+<button class="primary" onclick="connectWallet()">Connect Wallet</button>
+
+<hr>
+
+<input type="number" id="temp" placeholder="Temperature (2-6°C)">
+<input type="text" id="device" placeholder="Device ID (Fridge1)">
+
+<button class="primary" onclick="storeTemp()">Store Temperature</button>
+
+<hr>
+
+<button class="info" onclick="getCount()">Total Logs</button>
+
+<input type="number" id="index" placeholder="Log Index">
+<button class="info" onclick="getLog()">View Log</button>
+
+<p id="status"></p>
+
+</div>
+
+<script>
+let web3;
+let contract;
+
+const contractAddress = "PASTE_CONTRACT_ADDRESS";
+const abi = PASTE_ABI_HERE;
+
+async function connectWallet() {
+    if (window.ethereum) {
+        web3 = new Web3(window.ethereum);
+        await window.ethereum.request({ method: 'eth_requestAccounts' });
+        const accounts = await web3.eth.getAccounts();
+        contract = new web3.eth.Contract(abi, contractAddress);
+        document.getElementById("wallet").innerText =
+            "Wallet: " + accounts[0];
+    } else {
+        alert("Please install MetaMask");
+    }
+}
+
+async function storeTemp() {
+    const accounts = await web3.eth.getAccounts();
+    const temp = document.getElementById("temp").value;
+    const device = document.getElementById("device").value;
+
+    try {
+        await contract.methods.storeTemp(temp, device)
+            .send({ from: accounts[0] });
+
+        if (temp >= 2 && temp <= 6) {
+            document.getElementById("status").innerHTML =
+                "<span class='success'>✅ Safe Temperature Stored</span>";
+        } else {
+            document.getElementById("status").innerHTML =
+                "<span class='danger'>⚠ Unsafe Temperature!</span>";
+        }
+
+    } catch (error) {
+        document.getElementById("status").innerHTML =
+            "<span class='danger'>❌ Transaction Failed (Out of Range)</span>";
+    }
+}
+
+async function getCount() {
+    const count = await contract.methods.getLogCount().call();
+    document.getElementById("status").innerHTML =
+        "📊 Total Stored Logs: <b>" + count + "</b>";
+}
+
+async function getLog() {
+    const index = document.getElementById("index").value;
+
+    try {
+        const log = await contract.methods.getLog(index).call();
+
+        document.getElementById("status").innerHTML =
+            "🌡 Temp: " + log[0] +
+            "°C <br> ⏰ Timestamp: " + log[1] +
+            "<br> 🏷 Device: " + log[2];
+
+    } catch {
+        document.getElementById("status").innerHTML =
+            "<span class='danger'>❌ Invalid Index</span>";
+    }
+}
+</script>
+
+</body>
+</html>
